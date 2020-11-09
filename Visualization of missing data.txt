@@ -1,0 +1,109 @@
+library(ggplot2)
+library(dplyr)
+library(xml2)
+library(rvest) 
+library(magrittr)
+library(tidyr)
+library('gridExtra')
+library('naniar')
+
+df = read.csv('custdata.csv')
+head(df)
+
+missing.values <- df %>%
+  gather(key = "key", value = "val") %>%
+  mutate(is.missing = is.na(val)) %>%
+  group_by(key, is.missing) %>%
+  summarise(num.missing = n()) %>%
+  filter(is.missing==T) %>%
+  select(-is.missing) %>%
+  arrange(desc(num.missing)) 
+
+missing.values <- df %>%
+  gather(key = "key", value = "val") %>%
+  mutate(is.missing = is.na(val)) %>%
+  group_by(key, is.missing) %>%
+  summarise(num.missing = n()) %>%
+  filter(is.missing==T) %>%
+  select(-is.missing) %>%
+  arrange(desc(num.missing)) 
+
+missing.values %>%
+  ggplot() +
+  geom_bar(aes(x=key, y=num.missing), stat = 'identity') +
+  labs(x='variable', y="number of missing values", title='Number of missing values') +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+missing.values <- df %>%
+  gather(key = "key", value = "val") %>%
+  mutate(isna = is.na(val)) %>%
+  group_by(key) %>%
+  mutate(total = n()) %>%
+  group_by(key, total, isna) %>%
+  summarise(num.isna = n()) %>%
+  mutate(pct = num.isna / total * 100)
+
+levels <-
+  (missing.values  %>% filter(isna == T) %>% arrange(desc(pct)))$key
+
+percentage.plot <- missing.values %>%
+  ggplot() +
+  geom_bar(aes(x = reorder(key, desc(pct)), 
+               y = pct, fill=isna), 
+           stat = 'identity', alpha=0.8) +
+  scale_x_discrete(limits = levels) +
+  scale_fill_manual(name = "", 
+                    values = c('steelblue', 'tomato3'), labels = c("Present", "Missing")) +
+  coord_flip() +
+  labs(title = "Percentage of missing values", x =
+         'Variable', y = "% of missing values")
+
+percentage.plot
+
+row.plot <- df %>%
+  mutate(id = row_number()) %>%
+  gather(-id, key = "key", value = "val") %>%
+  mutate(isna = is.na(val)) %>%
+  ggplot(aes(key, id, fill = isna)) +
+  geom_raster(alpha=0.8) +
+  scale_fill_manual(name = "",
+                    values = c('steelblue', 'tomato3'),
+                    labels = c("Present", "Missing")) +
+  scale_x_discrete(limits = levels) +
+  labs(x = "Variable",
+       y = "Row Number", title = "Missing values in rows") +
+  coord_flip()
+
+row.plot
+
+grid.arrange(percentage.plot, row.plot, ncol = 2)
+
+###################################################################################
+
+vis_miss(df)
+gg_miss_upset(df)
+# how many missings?
+n_var_miss(df)
+gg_miss_upset(df, 
+              nsets = 10,
+              nintersects = NA)
+# using  geom_miss_point()
+ggplot(df,
+       aes(x =  num.vehicles,
+           y = age)) +
+  geom_miss_point() +
+  facet_wrap(~marital.stat) +
+theme_dark()
+
+gg_miss_case(df) + labs(y = "Look at all the missing ones")
+
+gg_miss_var(df,
+            facet =  state.of.res)
+
+gg_miss_fct(x = df, fct = marital.stat) + labs(title = "NA in Risk Factors and Marital status")
+
+gg_miss_case_cumsum(df, breaks = 200) + theme_bw()
+
+gg_miss_var_cumsum(df)
+
+gg_miss_which(df)
