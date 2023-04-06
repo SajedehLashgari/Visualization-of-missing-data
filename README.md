@@ -1,1 +1,1 @@
-In this work, several R libraries are introduced to visualize missing data.
+In this work, we introduced several libraries and plots in R to visualize missing data.
